@@ -1,0 +1,4 @@
+Treino,Teste,BERT_Dual Contrastive_Acc,BERT_Entropia-Cruzada_Acc,RoBERTa_Dual Contrastive_Acc,RoBERTa_Entropia-Cruzada_Acc,BERT_Dual Contrastive_Precision,BERT_Entropia-Cruzada_Precision,RoBERTa_Dual Contrastive_Precision,RoBERTa_Entropia-Cruzada_Precision,BERT_Dual Contrastive_ROC_AUC,BERT_Entropia-Cruzada_ROC_AUC,RoBERTa_Dual Contrastive_ROC_AUC,RoBERTa_Entropia-Cruzada_ROC_AUC
+YT_Treino,YT_Benigno,0.9579,0.9656,0.9751,0.9694,0.9637,0.9718,0.9761,0.9646,0.9921,0.9872,0.9949,0.9924
+YT_Treino,YT_GPT-6,0.9598,0.9618,0.9751,0.9656,0.9639,0.9715,0.9761,0.9643,0.9916,0.9863,0.9947,0.9918
+YT_Treino,YT_Gemini-3.1pro,0.9465,0.9407,0.9694,0.9637,0.9628,0.9702,0.9758,0.9641,0.9901,0.9818,0.9943,0.9914

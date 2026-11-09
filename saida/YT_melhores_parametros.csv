@@ -1,0 +1,11 @@
+Modelo,Vetorizacao,CV_roc_auc,Parametros
+Regressão Logística,BoW,0.9842,"{""clf__C"": 10, ""clf__class_weight"": null, ""vec__ngram_range"": [1, 2]}"
+Naive Bayes,BoW,0.9784,"{""clf__alpha"": 1.0, ""vec__ngram_range"": [1, 2]}"
+Random Forest,BoW,0.9824,"{""clf__min_samples_leaf"": 2, ""clf__n_estimators"": 300, ""vec__ngram_range"": [1, 2]}"
+KNN,BoW,0.9668,"{""clf__metric"": ""cosine"", ""clf__n_neighbors"": 11, ""clf__weights"": ""distance"", ""vec__ngram_range"": [1, 2]}"
+SVM,BoW,0.9821,"{""clf__C"": 10, ""clf__kernel"": ""rbf"", ""vec__ngram_range"": [1, 2]}"
+Regressão Logística,TF-IDF,0.9891,"{""clf__C"": 100, ""clf__class_weight"": null, ""vec__ngram_range"": [1, 2], ""vec__sublinear_tf"": true}"
+Naive Bayes,TF-IDF,0.9821,"{""clf__alpha"": 1.0, ""vec__ngram_range"": [1, 2], ""vec__sublinear_tf"": true}"
+Random Forest,TF-IDF,0.983,"{""clf__min_samples_leaf"": 2, ""clf__n_estimators"": 300, ""vec__ngram_range"": [1, 2], ""vec__sublinear_tf"": true}"
+KNN,TF-IDF,0.9689,"{""clf__metric"": ""cosine"", ""clf__n_neighbors"": 11, ""clf__weights"": ""distance"", ""vec__ngram_range"": [1, 2], ""vec__sublinear_tf"": true}"
+SVM,TF-IDF,0.9892,"{""clf__C"": 1, ""clf__kernel"": ""linear"", ""vec__ngram_range"": [1, 2], ""vec__sublinear_tf"": true}"

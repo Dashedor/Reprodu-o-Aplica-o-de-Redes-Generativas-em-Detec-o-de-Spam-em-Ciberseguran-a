@@ -1,0 +1,5 @@
+Modelo,Perda,Val_ROC_AUC,Parametros
+BERT,ce,0.9993,"{""lr"": 3e-05, ""epocas"": 8, ""batch"": 8, ""max_len"": 128}"
+BERT,dual,0.9984,"{""lr"": 2e-05, ""epocas"": 3, ""batch"": 16, ""max_len"": 128, ""tau"": 0.1}"
+RoBERTa,ce,0.998,"{""lr"": 3e-05, ""epocas"": 8, ""batch"": 8, ""max_len"": 128}"
+RoBERTa,dual,0.9956,"{""lr"": 3e-05, ""epocas"": 5, ""batch"": 16, ""max_len"": 64, ""tau"": 0.1}"

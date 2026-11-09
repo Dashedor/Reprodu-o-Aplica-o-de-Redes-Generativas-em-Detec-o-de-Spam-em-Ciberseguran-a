@@ -1,0 +1,5 @@
+Modelo,Perda,Val_F1,Parametros
+BERT,ce,0.9713,"{""lr"": 2e-05, ""epocas"": 3, ""batch"": 16, ""max_len"": 128}"
+BERT,dual,0.9681,"{""lr"": 1e-05, ""epocas"": 5, ""batch"": 32, ""max_len"": 64, ""tau"": 0.05}"
+RoBERTa,ce,0.9725,"{""lr"": 1e-05, ""epocas"": 8, ""batch"": 16, ""max_len"": 128}"
+RoBERTa,dual,0.9743,"{""lr"": 3e-05, ""epocas"": 5, ""batch"": 16, ""max_len"": 64, ""tau"": 0.1}"
