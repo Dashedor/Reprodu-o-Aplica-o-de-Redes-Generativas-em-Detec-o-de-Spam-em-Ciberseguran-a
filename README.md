@@ -1,4 +1,4 @@
-# Reprodução: Redes Generativas em Detecção de Spam (SBSeg 2025) — dataset YouTube
+# Reprodução: Redes Generativas em Detecção de Spam
 
 Todo CSV precisa ter as colunas `CONTENT` (texto) e `CLASS` (1 = Spam, 0 = Ham).
 
