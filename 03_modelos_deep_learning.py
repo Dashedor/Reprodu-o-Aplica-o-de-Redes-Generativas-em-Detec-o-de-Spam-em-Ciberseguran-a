@@ -208,7 +208,7 @@ def main():
     ap.add_argument("--saida", default=None)
     args = ap.parse_args()
 
-    dev = torch.device("cuda")
+    dev = torch.device("cuda") if torch.cuda.is_available() else "cpu"
     print("Dispositivo:", dev)
     testes = {nome_do_arquivo(p): carregar_csv(p) for p in args.teste}
 
