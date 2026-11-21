@@ -1,4 +1,8 @@
-"""BERT e RoBERTa (PyTorch + Hugging Face) com Entropia Cruzada ou Dual Contrastive Learning.
+"""BERT, RoBERTa (Hugging Face) e RNNs (RNN, LSTM, BiLSTM, GRU, BiGRU) em PyTorch,
+com Entropia Cruzada ou Dual Contrastive Learning.
+
+As RNNs são treinadas do zero: vocabulário e embeddings aprendidos só com o CSV de treino (sem pré-treino).
+Exemplo só com RNNs:  python 03_modelos_deep_learning.py --modelos LSTM BiLSTM GRU --treino ... --teste ...
 
 pip install torch transformers scikit-learn pandas
 Você informa o(s) CSV(s) de treino e o(s) CSV(s) de teste (benignos ou envenenados).
@@ -27,12 +31,29 @@ import torch.nn as nn
 import torch.nn.functional as F
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
+from torch.nn.utils.rnn import pack_padded_sequence
 from torch.utils.data import DataLoader, TensorDataset
 from transformers import AutoModel, AutoTokenizer, get_linear_schedule_with_warmup
 
-from common import SAIDA, carregar_csv, nome_do_arquivo, salvar_resultados
+from common import SAIDA, carregar_csv, codificar, construir_vocab, nome_do_arquivo, salvar_resultados
+
+torch.backends.cudnn.enabled = False
 
 CHECKPOINTS = {"BERT": "bert-base-uncased", "RoBERTa": "roberta-base"}
+RNNS = {"RNN": ("RNN", False), "LSTM": ("LSTM", False), "BiLSTM": ("LSTM", True),
+        "GRU": ("GRU", False), "BiGRU": ("GRU", True)}                 # nome -> (célula, bidirecional)
+TODOS_MODELOS = list(CHECKPOINTS) + list(RNNS)
+# hiperparâmetros padrão por família (as RNNs precisam de lr/épocas bem diferentes dos transformers)
+PADRAO_TRF = {"lr": 2e-5, "epocas": 3, "batch": 16, "max_len": 128, "tau": 0.1}
+PADRAO_RNN = {"lr": 1e-3, "epocas": 10, "batch": 32, "max_len": 128, "tau": 0.1,
+              "embed": 128, "hidden": 128, "camadas": 1, "dropout": 0.3}
+
+
+def resolver(args, nome, extra=None):
+    """Namespace com os hiperparâmetros efetivos: valor passado na CLI > padrão da família; `extra` (busca/params) vence tudo."""
+    padrao = PADRAO_RNN if nome in RNNS else PADRAO_TRF
+    base = {k: (getattr(args, k, None) if getattr(args, k, None) is not None else v) for k, v in padrao.items()}
+    return argparse.Namespace(**{**vars(args), **base, **(extra or {})})
 
 
 def fixar_seed(seed):
@@ -51,6 +72,31 @@ class Classificador(nn.Module):
 
     def forward(self, ids, mask):
         z = self.enc(input_ids=ids, attention_mask=mask).last_hidden_state[:, 0]   # token [CLS]/<s>
+        z = self.drop(z)
+        return z, self.fc(z)
+
+
+class ClassificadorRNN(nn.Module):
+    """Embedding -> RNN/LSTM/GRU (uni ou bidirecional) -> último estado oculto (z) -> camada linear (θ).
+    Mesma interface do Classificador: forward(ids, mask) -> (z, logits); por isso serve às duas perdas."""
+
+    def __init__(self, tam_vocab, tipo, bi, perda, embed=128, hidden=128, camadas=1, dropout=0.3, n_classes=2):
+        super().__init__()
+        celula = {"RNN": nn.RNN, "LSTM": nn.LSTM, "GRU": nn.GRU}[tipo]
+        self.emb = nn.Embedding(tam_vocab, embed, padding_idx=0)
+        self.rnn = celula(embed, hidden, num_layers=camadas, batch_first=True, bidirectional=bi,
+                          dropout=dropout if camadas > 1 else 0.0)
+        self.tipo, self.bi, self.perda = tipo, bi, perda
+        self.drop = nn.Dropout(dropout)
+        self.fc = nn.Linear(hidden * (2 if bi else 1), n_classes, bias=(perda == "ce"))
+
+    def forward(self, ids, mask):
+        x = self.drop(self.emb(ids))
+        lens = mask.sum(1).clamp(min=1).cpu()                          # comprimentos reais (sem padding)
+        empacotado = pack_padded_sequence(x, lens, batch_first=True, enforce_sorted=False)
+        saida = self.rnn(empacotado)[1]
+        h = saida[0] if self.tipo == "LSTM" else saida                  # LSTM devolve (h_n, c_n)
+        z = torch.cat([h[-2], h[-1]], dim=1) if self.bi else h[-1]      # última camada (fwd+bwd se bidirecional)
         z = self.drop(z)
         return z, self.fc(z)
 
@@ -88,6 +134,11 @@ def tokenizar(tok, textos, max_len):
     return enc["input_ids"], enc["attention_mask"]
 
 
+def tokenizar_rnn(vocab, textos, max_len):
+    ids = torch.tensor(codificar(vocab, list(textos), max_len), dtype=torch.long)
+    return ids, (ids != 0).long()
+
+
 @torch.no_grad()
 def avaliar(modelo, loader, dev, tau):
     modelo.eval()
@@ -107,14 +158,23 @@ def avaliar(modelo, loader, dev, tau):
 def rodar(nome_modelo, perda, treino, testes, args, dev):
     """Treina uma vez e avalia em todos os testes. Retorna {nome_teste: métricas}."""
     fixar_seed(args.seed)
-    ck = CHECKPOINTS[nome_modelo]
-    tok = AutoTokenizer.from_pretrained(ck)
-    ids_tr, m_tr = tokenizar(tok, treino["CONTENT"], args.max_len)
+    if nome_modelo in RNNS:
+        vocab = construir_vocab(treino["CONTENT"], args.min_freq)          # vocabulário só com o treino
+        enc = lambda textos: tokenizar_rnn(vocab, textos, args.max_len)
+        tipo, bi = RNNS[nome_modelo]
+        modelo = ClassificadorRNN(len(vocab), tipo, bi, perda, args.embed, args.hidden,
+                                  args.camadas, args.dropout).to(dev)
+        wd = 1e-4
+    else:
+        ck = CHECKPOINTS[nome_modelo]
+        tok = AutoTokenizer.from_pretrained(ck)
+        enc = lambda textos: tokenizar(tok, textos, args.max_len)
+        modelo = Classificador(ck, perda).to(dev)
+        wd = 0.01
+    ids_tr, m_tr = enc(treino["CONTENT"])
     y_tr = torch.tensor(treino["CLASS"].values)
     dl_tr = DataLoader(TensorDataset(ids_tr, m_tr, y_tr), batch_size=args.batch, shuffle=True)
-
-    modelo = Classificador(ck, perda).to(dev)
-    opt = torch.optim.AdamW(modelo.parameters(), lr=args.lr, weight_decay=0.01)
+    opt = torch.optim.AdamW(modelo.parameters(), lr=args.lr, weight_decay=wd)
     total = len(dl_tr) * args.epocas
     sched = get_linear_schedule_with_warmup(opt, int(0.1 * total), total)
 
@@ -133,7 +193,7 @@ def rodar(nome_modelo, perda, treino, testes, args, dev):
 
     res = {}
     for nome_te, te in testes.items():
-        ids_te, m_te = tokenizar(tok, te["CONTENT"], args.max_len)
+        ids_te, m_te = enc(te["CONTENT"])
         dl_te = DataLoader(TensorDataset(ids_te, m_te, torch.tensor(te["CLASS"].values)), batch_size=args.batch * 2)
         res[nome_te] = avaliar(modelo, dl_te, dev, args.tau)
     del modelo, opt; gc.collect()
@@ -142,17 +202,20 @@ def rodar(nome_modelo, perda, treino, testes, args, dev):
     return res
 
 
-ESPACO = {"lr": [1e-5, 2e-5, 3e-5, 5e-5], "epocas": [3, 5, 8], "batch": [8, 16, 32],
-          "max_len": [64, 128], "tau": [0.05, 0.1, 0.3]}          # tau só vale para a perda Dual
+ESPACO_TRF = {"lr": [1e-5, 2e-5, 3e-5, 5e-5], "epocas": [3, 5, 8], "batch": [8, 16, 32],
+              "max_len": [64, 128], "tau": [0.05, 0.1, 0.3]}          # tau só vale para a perda Dual
+ESPACO_RNN = {"lr": [5e-4, 1e-3, 2e-3], "epocas": [5, 10, 15], "batch": [16, 32, 64], "max_len": [64, 128],
+              "embed": [64, 128, 256], "hidden": [64, 128, 256], "camadas": [1, 2],
+              "dropout": [0.2, 0.3, 0.5], "tau": [0.05, 0.1, 0.3]}
 METRICAS = {"f1": "F1", "roc_auc": "ROC_AUC", "accuracy": "Acc", "precision": "Precision", "recall": "Recall"}
 NOME_PERDA = {"ce": "Entropia-Cruzada", "dual": "Dual Contrastive"}
 
 
-def amostrar_configs(perda, padrao, n, seed):
+def amostrar_configs(perda, padrao, n, seed, espaco):
     """Config padrão + (n-1) configs sorteadas do espaço de busca (busca aleatória, sem repetição)."""
-    chaves = [k for k in ESPACO if not (k == "tau" and perda == "ce")]
+    chaves = [k for k in espaco if not (k == "tau" and perda == "ce")]
     configs = [{k: padrao[k] for k in chaves}]
-    todas = list(itertools.product(*(ESPACO[k] for k in chaves)))
+    todas = list(itertools.product(*(espaco[k] for k in chaves)))
     random.Random(seed).shuffle(todas)
     for combo in todas:
         cfg = dict(zip(chaves, combo))
@@ -166,13 +229,15 @@ def amostrar_configs(perda, padrao, n, seed):
 def buscar_hiperparametros(nome, perda, base, args, dev):
     """Treina cada config em 80% do treino benigno e avalia nos 20% restantes (validação)."""
     tr, val = train_test_split(base, test_size=args.val_frac, stratify=base["CLASS"], random_state=args.seed)
-    padrao = {k: getattr(args, k) for k in ESPACO}
+    espaco = ESPACO_RNN if nome in RNNS else ESPACO_TRF
+    hp0 = resolver(args, nome)
+    padrao = {k: getattr(hp0, k) for k in espaco}
     metrica = METRICAS[args.scoring]
     melhor, melhor_score, historico = None, -1.0, []
-    configs = amostrar_configs(perda, padrao, args.n_tentativas, args.seed)
+    configs = amostrar_configs(perda, padrao, args.n_tentativas, args.seed, espaco)
     for i, cfg in enumerate(configs, 1):
         print(f"  [busca {nome}|{perda}] tentativa {i}/{len(configs)}: {cfg}")
-        hp = argparse.Namespace(**{**vars(args), **cfg})
+        hp = argparse.Namespace(**{**vars(hp0), **cfg})
         r = rodar(nome, perda, tr, {"val": val}, hp, dev)["val"]
         print(f"    validação: {metrica}={r[metrica]:.4f}")
         historico.append({"Modelo": nome, "Perda": perda, "Tentativa": i, "Parametros": json.dumps(cfg), **r})
@@ -191,13 +256,19 @@ def main():
     ap.add_argument("--treino", nargs="+", required=True, help="um ou mais CSVs de treino")
     ap.add_argument("--teste", nargs="+", required=True, help="um ou mais CSVs de teste")
     ap.add_argument("--seed", type=int, default=42)
-    ap.add_argument("--modelos", nargs="+", default=["BERT", "RoBERTa"], choices=list(CHECKPOINTS))
+    ap.add_argument("--modelos", nargs="+", default=["BERT", "RoBERTa", "LSTM", "BiLSTM", "GRU"], choices=TODOS_MODELOS,
+                    help="transformers: BERT, RoBERTa | RNNs: RNN, LSTM, BiLSTM, GRU, BiGRU")
     ap.add_argument("--perdas", nargs="+", default=["ce", "dual"], choices=["ce", "dual"])
-    ap.add_argument("--epocas", type=int, default=3)
-    ap.add_argument("--batch", type=int, default=16)
-    ap.add_argument("--lr", type=float, default=2e-5)
-    ap.add_argument("--max-len", type=int, default=128)
-    ap.add_argument("--tau", type=float, default=0.1, help="temperatura da perda contrastiva")
+    ap.add_argument("--epocas", type=int, default=None, help="padrão: 3 (transformers) / 10 (RNNs)")
+    ap.add_argument("--batch", type=int, default=None, help="padrão: 16 (transformers) / 32 (RNNs)")
+    ap.add_argument("--lr", type=float, default=None, help="padrão: 2e-5 (transformers) / 1e-3 (RNNs)")
+    ap.add_argument("--max-len", type=int, default=None, help="padrão: 128")
+    ap.add_argument("--tau", type=float, default=None, help="temperatura da perda contrastiva (padrão 0,1)")
+    ap.add_argument("--embed", type=int, default=None, help="RNNs: dimensão do embedding (padrão 128)")
+    ap.add_argument("--hidden", type=int, default=None, help="RNNs: unidades ocultas (padrão 128)")
+    ap.add_argument("--camadas", type=int, default=None, help="RNNs: nº de camadas recorrentes (padrão 1)")
+    ap.add_argument("--dropout", type=float, default=None, help="RNNs: dropout (padrão 0,3)")
+    ap.add_argument("--min-freq", type=int, default=2, help="RNNs: frequência mínima para entrar no vocabulário")
     ap.add_argument("--otimizar", action="store_true", help="busca aleatória de hiperparâmetros com validação no treino benigno")
     ap.add_argument("--base", help="CSV de treino benigno usado na busca (padrão: 1º --treino)")
     ap.add_argument("--n-tentativas", type=int, default=8, help="nº de configurações testadas por (modelo, perda)")
@@ -208,7 +279,7 @@ def main():
     ap.add_argument("--saida", default=None)
     args = ap.parse_args()
 
-    dev = torch.device("cuda") if torch.cuda.is_available() else "cpu"
+    dev = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
     print("Dispositivo:", dev)
     testes = {nome_do_arquivo(p): carregar_csv(p) for p in args.teste}
 
@@ -237,11 +308,11 @@ def main():
     linhas = []
     for nome in args.modelos:
         for perda in args.perdas:
-            hp = argparse.Namespace(**{**vars(args), **(params or {}).get((nome, perda), {})})
+            hp = resolver(args, nome, (params or {}).get((nome, perda)))
             for p_tr in args.treino:
                 tr, nome_tr = carregar_csv(p_tr), nome_do_arquivo(p_tr)
-                print(f"[{nome} | {perda} | treino={nome_tr}] n={len(tr)} lr={hp.lr} epocas={hp.epocas} "
-                      f"batch={hp.batch} max_len={hp.max_len} tau={hp.tau}")
+                efetivos = {k: getattr(hp, k) for k in (PADRAO_RNN if nome in RNNS else PADRAO_TRF)}
+                print(f"[{nome} | {perda} | treino={nome_tr}] n={len(tr)} {efetivos}")
                 res = rodar(nome, perda, tr, testes, hp, dev)
                 for nome_te, r in res.items():
                     linhas.append({"Modelo": nome, "Perda": NOME_PERDA[perda], "Config": config,
