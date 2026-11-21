@@ -9,7 +9,7 @@ pip install -r requirements.txt
 python 02_modelos_classicos.py     --treino saida/treino.csv saida/treino_gpt4o.csv saida/treino_gemini.csv --teste saida/teste.csv
 python 03_modelos_deep_learning.py --treino saida/treino.csv saida/treino_gpt4o.csv saida/treino_gemini.csv --teste saida/teste.csv
 ```
-Cada CSV de treino é combinado com cada CSV de teste. Resultados salvos em CSV: `saida/resultados_classicos.csv` e `saida/resultados_deep.csv` (formato longo)
+Cada CSV de treino é combinado com cada CSV de teste. Resultados salvos em CSV: `saida/resultados_classicos.csv` e `saida/resultados_deep.csv`
 
 ## Otimização de hiperparâmetros (opcional)
 ```bash
