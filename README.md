@@ -14,11 +14,12 @@ Resultados salvos em CSV: `saida/resultados_classicos.csv` e `saida/resultados_d
 ## Otimização de hiperparâmetros (opcional)
 ```bash
 python 02_modelos_classicos.py --otimizar --treino saida/YT_Tr_Benigno.csv saida/YT_Tr_GPT-6.csv --teste saida/YT_Teste.csv
+```
 GridSearchCV (5 folds, métrica F1) só no treino benigno (1º `--treino`, ou `--base`). Os melhores parâmetros vão para
 `saida/melhores_parametros.csv` e são aplicados em todos os treinos; resultados em `saida/resultados_classicos_otimizado*.csv`.
 Para reaproveitar sem refazer a busca: `--params saida/melhores_parametros.csv`. Use `--cv 3` ou `--scoring roc_auc` para ajustar.`
 ```
-
+```
 ## Otimização de hiperparâmetros do BERT/RoBERTa (opcional)
 ```bash
 python 03_modelos_deep_learning.py --otimizar --n-tentativas 8 --treino saida/YT_Tr_Benigno.csv saida/YT_Tr_GPT-6.csv --teste saida/YT_Teste.csv`
