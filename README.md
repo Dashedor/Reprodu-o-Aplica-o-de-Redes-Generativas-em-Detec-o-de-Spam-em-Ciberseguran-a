@@ -1,6 +1,6 @@
-# Reprodução: Redes Generativas em Detecção de Spam (SBSeg 2025) — dataset YouTube
-
+# Reprodução: Aplicação de Redes Generativas em Detecção de Spam em Cibersegurança
 Todo CSV precisa ter as colunas `CONTENT` (texto) e `CLASS` (1 = Spam, 0 = Ham).
+Os exemplos mostram apenas o uso do dataset do Youtube, para rodar com o dataset do Twitter apenas Mude YT_ para TWT_
 
 ```bash
 pip install -r requirements.txt
