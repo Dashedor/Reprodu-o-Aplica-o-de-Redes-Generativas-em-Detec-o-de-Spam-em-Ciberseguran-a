@@ -1,0 +1,2 @@
+Modelo,Perda,Val_F1,Parametros
+BERT,ce,0.9713,"{""lr"": 2e-05, ""epocas"": 3, ""batch"": 16, ""max_len"": 128}"
