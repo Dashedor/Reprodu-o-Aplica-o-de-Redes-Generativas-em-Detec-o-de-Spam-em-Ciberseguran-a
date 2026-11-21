@@ -34,8 +34,8 @@ python 03_modelos_deep_learning.py --otimizar --n-tentativas 8 --treino saida/YT
 ```
 
 ## RNNs (RNN, LSTM, BiLSTM, GRU, BiGRU)
-`03_modelos_deep_learning.py` agora aceita, além de `BERT` e `RoBERTa`, as RNNs `RNN`, `LSTM`, `BiLSTM`, `GRU` e `BiGRU`
-(PyTorch puro, treinadas do zero: vocabulário e embeddings aprendidos só com o CSV de treino).
+`03_modelos_deep_learning.py` aceita, além de `BERT` e `RoBERTa`, as RNNs `RNN`, `LSTM`, `BiLSTM`, `GRU`
+(Treinadas do zero: vocabulário e embeddings aprendidos só com o CSV de treino).
 ```bash
 python 03_modelos_deep_learning.py --modelos LSTM BiLSTM GRU --treino saida/YT_Tr_Benigno.csv saida/YT_Tr_GPT-6.csv --teste saida/YT_Teste.csv
 python 03_modelos_deep_learning.py --modelos BiLSTM --otimizar --n-tentativas 10 --treino saida/YT_Tr_Benigno.csv saida/YT_Tr_GPT-6.csv --teste saida/YT_Teste.csv
