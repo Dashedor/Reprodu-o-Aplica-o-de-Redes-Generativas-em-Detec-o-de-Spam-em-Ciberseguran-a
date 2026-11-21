@@ -41,7 +41,7 @@ python 03_modelos_deep_learning.py --modelos BiLSTM --otimizar --n-tentativas 10
 Padrões das RNNs: `lr=1e-3`, 10 épocas, batch 32, embedding 128, 128 unidades, 1 camada, dropout 0,3 (opções `--embed`, `--hidden`,
 `--camadas`, `--dropout`, `--min-freq`). Funcionam com Entropia Cruzada e com Dual Contrastive Learning, e com `--otimizar`/`--params`.
 
-##Hardware Utilizado
+## Hardware Utilizado
 CPU: Ryzen 5 5600x
 RAM: 32Gb
 GPU: Radeon RX 7600 Utilizando ROCm
