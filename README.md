@@ -4,6 +4,8 @@ Os exemplos mostram apenas o uso do dataset do Youtube, para rodar com o dataset
 
 Para rodar os moelos de Deep Learning é recomendado se utilizar uma GPU com suporte ao CUDA ou alternativas como ROCm
 
+Caso possua uma GPU com CUDA mude `torch.backends.cudnn.enabled` para True
+
 ```bash
 pip install -r requirements.txt
 
