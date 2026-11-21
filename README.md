@@ -43,6 +43,9 @@ Padrões das RNNs: `lr=1e-3`, 10 épocas, batch 32, embedding 128, 128 unidades,
 
 ## Hardware Utilizado
 CPU: Ryzen 5 5600x
+
 RAM: 32Gb
+
 GPU: Radeon RX 7600 Utilizando ROCm
+
 OS: Windows 11
