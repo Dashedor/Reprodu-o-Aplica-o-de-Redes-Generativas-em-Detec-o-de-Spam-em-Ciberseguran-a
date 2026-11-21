@@ -21,13 +21,14 @@ Para reaproveitar sem refazer a busca: `--params saida/melhores_parametros.csv`.
 ```
 ```
 ## Otimização de hiperparâmetros do BERT/RoBERTa (opcional)
-```bash
-python 03_modelos_deep_learning.py --otimizar --n-tentativas 8 --treino saida/YT_Tr_Benigno.csv saida/YT_Tr_GPT-6.csv --teste saida/YT_Teste.csv`
-```
 Busca aleatória de `lr`, `epocas`, `batch`, `max_len` (e `tau` na perda Dual) para cada (modelo, perda), validando em 20% do
 treino benigno (`--val-frac`). A config padrão é sempre uma das tentativas. Saídas: `saida/melhores_parametros_deep.csv`,
 `saida/melhores_parametros_deep_historico.csv` (todas as tentativas) e `saida/resultados_deep_otimizado*.csv`.
 Reuso sem refazer a busca: `--params saida/melhores_parametros_deep.csv`.
+
+```bash
+python 03_modelos_deep_learning.py --otimizar --n-tentativas 8 --treino saida/YT_Tr_Benigno.csv saida/YT_Tr_GPT-6.csv --teste saida/YT_Teste.csv`
+```
 
 ## RNNs (RNN, LSTM, BiLSTM, GRU, BiGRU)
 `03_modelos_deep_learning.py` agora aceita, além de `BERT` e `RoBERTa`, as RNNs `RNN`, `LSTM`, `BiLSTM`, `GRU` e `BiGRU`
